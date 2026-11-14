@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agentic ATS — Resume Scanner &amp; Skill Gap Simulator</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="scanbar" id="globalScanbar"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">▮▮▯</span>
+    <div class="brand-text">
+      <span class="brand-title">Agentic ATS</span>
+      <span class="brand-sub">Multimodal Layout Parsing &amp; Skill Gap Simulation</span>
+    </div>
+  </div>
+  <nav class="tabs" id="tabNav">
+    <button class="tab-btn active" data-tab="analyze">01 · Scan Resume</button>
+    <button class="tab-btn" data-tab="compare">02 · Compare Sets</button>
+    <button class="tab-btn" data-tab="simulate">03 · Skill Simulator</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= TAB 1 : ANALYZE ================= -->
+  <section class="tab-panel active" id="panel-analyze">
+    <div class="grid-2">
+      <div class="card">
+        <h2><span class="idx">01</span> Upload a resume</h2>
+        <p class="hint">PDF, DOCX or TXT. We read text <em>and</em> layout — columns, tables, images, fonts.</p>
+
+        <div class="dropzone" id="dropzoneSingle">
+          <input type="file" id="fileInputSingle" accept=".pdf,.docx,.txt" hidden />
+          <div class="dz-icon">⇪</div>
+          <div class="dz-text">Drag &amp; drop your resume here, or <span class="link">browse</span></div>
+          <div class="dz-file" id="dzFileNameSingle"></div>
+        </div>
+
+        <h2 class="mt"><span class="idx">02</span> Paste the job description <span class="optional">(optional but recommended)</span></h2>
+        <div class="jd-samples" id="jdSamples"></div>
+        <textarea id="jdInputSingle" rows="7" placeholder="Paste the job description here to get a keyword-match & skill gap score…"></textarea>
+
+        <button class="btn-primary" id="analyzeBtn">Scan &amp; Analyze</button>
+        <div class="status-line" id="analyzeStatus"></div>
+      </div>
+
+      <div class="card results-card" id="resultsCard">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-glyph">⌁</div>
+          <p>Your ATS report will render here once a resume is scanned.</p>
+        </div>
+
+        <div id="resultsContent" class="hidden">
+          <div class="score-hero">
+            <div class="score-ring-wrap">
+              <canvas id="scoreRing" width="140" height="140"></canvas>
+              <div class="score-ring-label" id="scoreRingLabel">--</div>
+            </div>
+            <div class="score-hero-text">
+              <span class="score-hero-title" id="scoreHeroTitle">Overall ATS Score</span>
+              <span class="score-hero-file" id="scoreHeroFile"></span>
+            </div>
+          </div>
+
+          <div class="subscore-row">
+            <div class="subscore"><span class="subscore-label">Keyword Match</span><div class="bar"><div class="bar-fill" id="barKeyword"></div></div><span class="subscore-val" id="valKeyword">--</span></div>
+            <div class="subscore"><span class="subscore-label">Formatting</span><div class="bar"><div class="bar-fill" id="barFormat"></div></div><span class="subscore-val" id="valFormat">--</span></div>
+            <div class="subscore"><span class="subscore-label">Sections</span><div class="bar"><div class="bar-fill" id="barSection"></div></div><span class="subscore-val" id="valSection">--</span></div>
+          </div>
+
+          <div class="skills-grid">
+            <div>
+              <h3>Matched skills</h3>
+              <div class="chip-row" id="matchedSkills"></div>
+            </div>
+            <div>
+              <h3>Missing skills</h3>
+              <div class="chip-row" id="missingSkills"></div>
+            </div>
+          </div>
+
+          <div class="issues-box" id="issuesBox">
+            <h3>Layout &amp; formatting notes</h3>
+            <ul id="issuesList"></ul>
+          </div>
+
+          <div class="roadmap-box" id="roadmapBox">
+            <h3>Prioritized skill-gap roadmap <span class="hint-inline">(simulated score impact if learned, ranked highest-impact first)</span></h3>
+            <canvas id="roadmapChart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 2 : COMPARE ================= -->
+  <section class="tab-panel" id="panel-compare">
+    <div class="card">
+      <h2><span class="idx">01</span> Upload multiple resume sets</h2>
+      <p class="hint">Compare several resume versions (or several candidates) against one job description, ranked side by side.</p>
+
+      <div class="dropzone" id="dropzoneMulti">
+        <input type="file" id="fileInputMulti" accept=".pdf,.docx,.txt" multiple hidden />
+        <div class="dz-icon">⇪</div>
+        <div class="dz-text">Drag &amp; drop 2+ resumes here, or <span class="link">browse</span></div>
+      </div>
+      <div class="file-pill-row" id="multiFileList"></div>
+
+      <h2 class="mt"><span class="idx">02</span> Job description</h2>
+      <textarea id="jdInputMulti" rows="6" placeholder="Paste the job description to rank all resumes against…"></textarea>
+
+      <button class="btn-primary" id="compareBtn">Compare Sets</button>
+      <div class="status-line" id="compareStatus"></div>
+    </div>
+
+    <div class="card" id="compareResultsCard">
+      <div class="empty-state" id="compareEmptyState">
+        <div class="empty-glyph">⧉</div>
+        <p>Ranked comparison table will render here.</p>
+      </div>
+      <div id="compareTableWrap" class="hidden"></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 3 : SIMULATE ================= -->
+  <section class="tab-panel" id="panel-simulate">
+    <div class="card">
+      <h2><span class="idx">01</span> Dynamic skill-gap simulator</h2>
+      <p class="hint">Scan a resume in Tab 1 first — its detected skills load here automatically. Then hand-pick skills you're considering learning and preview the score change instantly.</p>
+
+      <div class="sim-columns">
+        <div>
+          <h3>Your current skills</h3>
+          <div class="chip-row" id="simCurrentSkills"><span class="muted">Scan a resume first…</span></div>
+        </div>
+        <div>
+          <h3>Job description skills required</h3>
+          <div class="chip-row" id="simJdSkills"><span class="muted">—</span></div>
+        </div>
+      </div>
+
+      <h3 class="mt-sm">Pick skills to simulate adding</h3>
+      <div class="chip-row selectable" id="simMissingSkillsPicker"></div>
+
+      <button class="btn-primary" id="simulateBtn">Run Simulation</button>
+      <div class="status-line" id="simulateStatus"></div>
+
+      <div class="sim-result hidden" id="simResult">
+        <div class="sim-arrow">
+          <div class="sim-score-box"><span id="simBefore">--</span><label>Before</label></div>
+          <div class="sim-arrow-glyph">→</div>
+          <div class="sim-score-box highlight"><span id="simAfter">--</span><label>After</label></div>
+        </div>
+        <p id="simDelta" class="sim-delta-text"></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>Agentic ATS Capstone Project — FastAPI backend · vanilla JS frontend · runs locally, no external AI API required.</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

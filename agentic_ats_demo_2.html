@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic ATS — Layout Parsing & Skill Gap Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F7F9;
+    --panel:#FFFFFF;
+    --panel2:#F1F3F6;
+    --border:#DDE2E8;
+    --text:#1B222B;
+    --muted:#69707B;
+    --teal:#0E9E86;
+    --coral:#D9483B;
+    --amber:#B87610;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Manrope',sans-serif;
+    --display:'Space Grotesk',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    padding:32px 24px 80px;
+  }
+  .app{max-width:1080px;margin:0 auto;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.16em;
+    color:var(--amber);
+    text-transform:uppercase;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:6px;height:6px;border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 8px var(--amber);
+    animation:pulse 1.6s infinite ease-in-out;
+  }
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  h1{
+    font-family:var(--display);
+    font-size:clamp(24px,3.4vw,36px);
+    font-weight:700;
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  .tagline{color:var(--muted);font-size:14.5px;max-width:640px;line-height:1.55;margin-bottom:36px;}
+  .steps-row{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin:-10px 0 30px;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  }
+  .step{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 12px 6px 6px;}
+  .step-n{
+    width:20px;height:20px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;color:var(--amber);font-weight:700;font-size:11px;flex-shrink:0;
+  }
+  .step-arrow{color:var(--border);font-size:13px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .panel, .gauge-wrap, .scard, .skillcol, .sim-panel, .impact-card, .ai-panel{
+    box-shadow:0 1px 2px rgba(20,25,35,.04), 0 1px 10px rgba(20,25,35,.03);
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px 18px 16px;
+    position:relative;
+    overflow:hidden;
+  }
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px;}
+  .panel-title{font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;color:var(--text);text-transform:uppercase;}
+  .panel-sub{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  .hint-inline{font-size:10.5px;color:var(--muted);}
+  .sample-btn{
+    background:var(--panel);border:1px solid var(--border);color:var(--muted);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;
+    padding:7px 9px;border-radius:6px;cursor:pointer;transition:.15s;flex-shrink:0;
+    max-width:180px;
+  }
+  .sample-btn:hover{border-color:var(--teal);color:var(--teal);}
+  textarea{
+    width:100%;height:170px;resize:vertical;
+    background:var(--panel2);border:1px solid var(--border);border-radius:7px;
+    color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;
+    padding:11px 12px;outline:none;
+  }
+  textarea:focus{border-color:var(--teal);}
+  .filerow{display:flex;align-items:center;gap:10px;margin-top:9px;}
+  .filerow input[type=file]{
+    font-size:11.5px;color:var(--muted);flex:1;
+  }
+  .scanline{
+    position:absolute;left:0;right:0;top:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent);
+    box-shadow:0 0 12px var(--amber);
+    opacity:0;
+  }
+  .panel.scanning .scanline{animation:scan 1.1s linear;opacity:1;}
+  @keyframes scan{0%{top:0}100%{top:100%}}
+
+  .run-bar{display:flex;align-items:center;gap:14px;margin:22px 0 8px;flex-wrap:wrap;}
+  #run-scan{
+    background:var(--teal);color:#FFFFFF;border:none;
+    font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;
+    padding:12px 22px;border-radius:8px;cursor:pointer;transition:.15s;
+  }
+  #run-scan:hover{background:#0C8975;transform:translateY(-1px);}
+  #run-scan:disabled{opacity:.5;cursor:default;transform:none;}
+  #reset-btn{
+    background:transparent;color:var(--muted);border:1px solid var(--border);
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;
+    padding:11px 16px;border-radius:8px;cursor:pointer;transition:.15s;
+  }
+  #reset-btn:hover{border-color:var(--coral);color:var(--coral);}
+  .status{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.5;max-width:420px;}
+
+  #results{margin-top:0;}
+  .screen{display:none;}
+  .screen.active{display:block;animation:fadein .35s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .results-topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;}
+  #back-btn{
+    background:transparent;color:var(--muted);border:1px solid var(--border);
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;
+    padding:9px 14px;border-radius:8px;cursor:pointer;transition:.15s;
+  }
+  #back-btn:hover{border-color:var(--teal);color:var(--teal);}
+  .results-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;}
+
+  .id-card{
+    display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;padding:16px 20px;margin-bottom:22px;flex-wrap:wrap;
+    box-shadow:0 1px 2px rgba(20,25,35,.04), 0 1px 10px rgba(20,25,35,.03);
+  }
+  .id-avatar{
+    width:44px;height:44px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;
+    font-size:15px;color:var(--teal);flex-shrink:0;
+  }
+  .id-body{flex:1;min-width:200px;}
+  .id-name{font-family:var(--display);font-weight:700;font-size:16px;}
+  .id-sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .id-sub b{color:var(--text);font-weight:600;}
+  .id-tag{
+    font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+    padding:4px 9px;border-radius:20px;background:rgba(14,158,134,.1);color:var(--teal);border:1px solid rgba(14,158,134,.28);
+    flex-shrink:0;
+  }
+  .id-tag.custom{background:rgba(184,118,16,.1);color:var(--amber);border-color:rgba(184,118,16,.26);}
+
+  .dash-top{display:grid;grid-template-columns:220px 1fr;gap:24px;margin-bottom:26px;}
+  @media(max-width:760px){.dash-top{grid-template-columns:1fr;}}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;}
+  .gauge-num{font-family:var(--mono);font-size:40px;font-weight:700;margin-top:-64px;}
+  .gauge-label{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:4px;}
+
+  .summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .scard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .scard .n{font-family:var(--mono);font-size:26px;font-weight:700;}
+  .scard .l{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .scard.matched .n{color:var(--teal);}
+  .scard.gap .n{color:var(--coral);}
+  .scard.extra .n{color:var(--amber);}
+
+  h3.section-h{
+    font-family:var(--mono);font-size:13px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--text);margin:30px 0 4px;display:flex;align-items:center;gap:8px;
+  }
+  h3.section-h span{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:12.5px;}
+
+  .skills-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px;}
+  @media(max-width:760px){.skills-grid{grid-template-columns:1fr;}}
+  .skillcol{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;min-height:70px;}
+  .skillcol .h{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;}
+  .skillcol.matched .h{color:var(--teal);}
+  .skillcol.gap .h{color:var(--coral);}
+  .skillcol.extra .h{color:var(--amber);}
+  .chip{display:inline-block;font-family:var(--mono);font-size:11.5px;padding:4px 9px;border-radius:5px;margin:0 6px 6px 0;}
+  .chip.matched{background:rgba(14,158,134,.10);color:var(--teal);border:1px solid rgba(14,158,134,.3);}
+  .chip.gap{background:rgba(217,72,59,.08);color:var(--coral);border:1px solid rgba(217,72,59,.28);}
+  .chip.extra{background:rgba(184,118,16,.09);color:var(--amber);border:1px solid rgba(184,118,16,.26);}
+  .empty-note{color:var(--muted);font-size:12px;font-style:italic;}
+
+  .sim-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-top:14px;}
+  .sim-desc{color:var(--muted);font-size:12.5px;line-height:1.5;margin-bottom:14px;max-width:640px;}
+  .sim-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .sim-checks{display:flex;flex-wrap:wrap;gap:8px;flex:1;}
+  .sim-check{
+    display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);
+    padding:6px 10px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11.5px;transition:.15s;
+  }
+  .sim-check:hover{border-color:var(--amber);}
+  .sim-check input{accent-color:var(--amber);cursor:pointer;}
+  .sim-score{
+    font-family:var(--mono);text-align:right;min-width:150px;
+  }
+  .sim-score .val{font-size:26px;font-weight:700;color:var(--teal);}
+  .sim-score .delta{font-size:12px;color:var(--amber);}
+
+  .impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+  @media(max-width:760px){.impact-grid{grid-template-columns:1fr;}}
+  .impact-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .impact-h{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.03em;margin-bottom:6px;}
+  .impact-b{font-size:12.5px;color:var(--muted);line-height:1.5;}
+
+  .sections-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .sec-chip{
+    font-family:var(--mono);font-size:11.5px;padding:5px 10px;border-radius:5px;
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+  }
+  .sec-chip b{color:var(--muted);font-weight:400;margin-right:5px;}
+
+  .ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-top:14px;}
+  .ai-tip{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5;}
+  .ai-tip:last-child{border-bottom:none;}
+  .ai-tip .idx{font-family:var(--mono);color:var(--amber);font-weight:700;font-size:12px;flex-shrink:0;}
+  .ai-src{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:10px;}
+
+  footer{margin-top:60px;color:var(--muted);font-size:11px;font-family:var(--mono);text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+<div id="screen-input" class="screen active">
+  <div class="eyebrow">Agentic ATS for Enterprise Resource Management</div>
+  <h1>Multimodal Layout Parsing &amp; Dynamic Skill Gap Simulation</h1>
+  <p class="tagline">Match an employee or candidate profile against a role or project requirement. The system parses document layout, extracts skills, scores resource-fit, and simulates closing skill gaps — built to support internal staffing, project resourcing, and upskilling-vs-hiring decisions.</p>
+
+  <div class="steps-row">
+    <div class="step"><span class="step-n">1</span>Add a profile &amp; requirement</div>
+    <div class="step-arrow">→</div>
+    <div class="step"><span class="step-n">2</span>Run scan</div>
+    <div class="step-arrow">→</div>
+    <div class="step"><span class="step-n">3</span>Review fit &amp; simulate gaps</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel" id="resume-panel">
+      <div class="scanline"></div>
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Employee / Candidate Profile</div>
+          <div class="panel-sub">Resume or internal skills profile</div>
+        </div>
+        <select class="sample-btn" id="load-sample-resume" title="Load a sample employee/candidate profile">
+          <option value="">Load sample ▾</option>
+        </select>
+      </div>
+      <textarea id="resume-text" placeholder="Paste a resume or internal employee skills profile here..."></textarea>
+      <div class="filerow">
+        <input type="file" id="resume-file" accept="application/pdf" title="Upload a PDF resume for layout-aware parsing">
+        <span class="hint-inline">PDF upload enables layout-aware section detection</span>
+      </div>
+    </div>
+    <div class="panel" id="jd-panel">
+      <div class="scanline"></div>
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Role / Project Requirement</div>
+          <div class="panel-sub">Open role, project brief, or staffing request</div>
+        </div>
+        <select class="sample-btn" id="load-sample-jd" title="Load a sample role or project requirement">
+          <option value="">Load sample ▾</option>
+        </select>
+      </div>
+      <textarea id="jd-text" placeholder="Paste a job description, project staffing request, or role requirement here..."></textarea>
+    </div>
+  </div>
+
+  <div class="run-bar">
+    <button id="run-scan">▶ Run Scan</button>
+    <button id="reset-btn" title="Clear inputs and results">↺ Reset</button>
+    <div class="status" id="status-text">Add a profile and a requirement above, or pick a sample from each dropdown, then run the scan.</div>
+  </div>
+</div>
+
+<div id="screen-results" class="screen">
+  <div class="results-topbar">
+    <button id="back-btn">← New Scan</button>
+    <div class="results-eyebrow">Resource-Fit Scan Results</div>
+  </div>
+
+  <div class="id-card">
+    <div class="id-avatar" id="id-avatar">—</div>
+    <div class="id-body">
+      <div class="id-name" id="id-name">—</div>
+      <div class="id-sub">Evaluated against <b id="id-role">—</b></div>
+    </div>
+    <div class="id-tag" id="id-tag">Sample profile</div>
+  </div>
+
+  <div id="results">
+    <div class="dash-top">
+      <div class="gauge-wrap">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="68" fill="none" stroke="#E3E7EC" stroke-width="14"/>
+          <circle id="gauge-arc" cx="80" cy="80" r="68" fill="none" stroke="#0E9E86" stroke-width="14"
+                  stroke-linecap="round" stroke-dasharray="427" stroke-dashoffset="427"
+                  transform="rotate(-90 80 80)" style="transition:stroke-dashoffset .8s ease, stroke .3s ease"/>
+        </svg>
+        <div class="gauge-num" id="gauge-num">0%</div>
+        <div class="gauge-label" title="Share of required skills the profile currently covers">Resource-Fit Score</div>
+      </div>
+      <div class="summary-cards">
+        <div class="scard matched" title="Required skills the profile already has"><div class="n" id="count-matched">0</div><div class="l">Skills matched</div></div>
+        <div class="scard gap" title="Required skills missing from the profile"><div class="n" id="count-gap">0</div><div class="l">Skill gaps</div></div>
+        <div class="scard extra" title="Skills the profile has beyond what this role requires"><div class="n" id="count-extra">0</div><div class="l">Additional skills</div></div>
+        <div class="scard" style="grid-column:1/-1;"><div class="l" style="margin-top:0;color:var(--text);font-size:13px;line-height:1.5;" id="score-narrative">—</div></div>
+      </div>
+    </div>
+
+    <h3 class="section-h">Skill Extraction <span>— pattern-matched against a 70+ term taxonomy</span></h3>
+    <div class="skills-grid">
+      <div class="skillcol matched"><div class="h">Matched</div><div id="chips-matched"></div></div>
+      <div class="skillcol gap"><div class="h">Gaps</div><div id="chips-gap"></div></div>
+      <div class="skillcol extra"><div class="h">Additional (resume only)</div><div id="chips-extra"></div></div>
+    </div>
+
+    <h3 class="section-h">Dynamic Skill Gap Simulator <span>— toggle a skill to simulate a training investment</span></h3>
+    <div class="sim-panel">
+      <div class="sim-desc">Check any gap skill to simulate this person completing training in it, and watch the resource-fit score recalculate live. Use this to prioritize which skill to invest in first, or to decide upskill-vs-hire for a given requirement.</div>
+      <div class="sim-row">
+        <div class="sim-checks" id="sim-checks"></div>
+        <div class="sim-score">
+          <div class="val" id="sim-val">0%</div>
+          <div class="delta" id="sim-delta">baseline</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="section-h">Enterprise Impact <span>— how this supports resourcing decisions</span></h3>
+    <div class="impact-grid">
+      <div class="impact-card"><div class="impact-h">Internal Mobility</div><div class="impact-b">Surface which existing employees are near-fits for a new project without opening an external req.</div></div>
+      <div class="impact-card"><div class="impact-h">Upskill vs. Hire</div><div class="impact-b">Use the gap simulator to quantify whether closing a skill gap via training beats the cost/time of hiring externally.</div></div>
+      <div class="impact-card"><div class="impact-h">Bench Visibility</div><div class="impact-b">Run this across a resource pool to see fit scores at a glance and staff projects faster.</div></div>
+    </div>
+
+    <h3 class="section-h">Layout-Parsed Sections <span>— detected via font-size / positional heuristics</span></h3>
+    <div class="sections-list" id="detected-sections"></div>
+
+    <h3 class="section-h">Optimization Suggestions <span>— agentic recommendation layer</span></h3>
+    <div class="ai-panel" id="ai-panel">
+      <div class="ai-tip"><div class="idx">···</div><div>Generating suggestions...</div></div>
+    </div>
+  </div>
+</div>
+
+  <footer>AGENTIC ATS — CS CAPSTONE DEMO — RUNS FULLY CLIENT-SIDE</footer>
+</div>
+
+<script>
+if (window['pdfjsLib']) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const SKILLS = ["Python","JavaScript","TypeScript","Java","C++","C#","Go","Rust","SQL","R","Scala","Kotlin","Swift",
+"React","Angular","Vue","Node.js","Django","Flask","FastAPI","Spring Boot",".NET","TensorFlow","PyTorch","Scikit-learn","Pandas","NumPy",
+"AWS","Azure","GCP","Docker","Kubernetes","Terraform","CI/CD","Jenkins","GitHub Actions","System Design",
+"NoSQL","MongoDB","PostgreSQL","MySQL","Redis","Spark","Hadoop","Kafka","Airflow","ETL",
+"Machine Learning","Deep Learning","NLP","Computer Vision","LLM","Generative AI","Transformers","RAG","Prompt Engineering","MLOps",
+"Git","Jira","Figma","REST API","GraphQL","Microservices","Agile","Scrum",
+"Leadership","Communication","Problem Solving","Team Collaboration","Project Management"];
+
+function escapeRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function extractSkills(text){
+  const lower = text.toLowerCase();
+  const found = [];
+  for (const skill of SKILLS){
+    const pattern = new RegExp('(?:^|[^a-z0-9+#.])' + escapeRe(skill.toLowerCase()) + '(?:$|[^a-z0-9+#.])', 'i');
+    if (pattern.test(' ' + lower + ' ')) found.push(skill);
+  }
+  return found;
+}
+
+const SAMPLE_PROFILES = [
+  {
+    name: "Jordan Reyes — Backend Engineer",
+    text: `Jordan Reyes
+Software Engineer
+
+SUMMARY
+Backend-focused software engineer with 4 years building scalable services and APIs.
+
+EXPERIENCE
+Backend Engineer — Fintech startup (2022–present)
+- Built REST API services in Python (Django) handling 2M+ daily requests
+- Deployed and monitored containers using Docker on AWS ECS
+- Automated deployments with GitHub Actions and basic CI/CD pipelines
+- Collaborated with product team using Agile/Scrum ceremonies
+- Used Git for version control across a 12-engineer team
+
+Software Engineer — E-commerce Co (2020–2022)
+- Developed React front-end components for the checkout flow
+- Wrote SQL queries against MySQL for reporting dashboards
+- Practiced pair programming and led sprint retrospectives
+
+EDUCATION
+B.S. Computer Science, State University
+
+SKILLS
+Python, JavaScript, React, Django, MySQL, Docker, AWS, Git, REST API, Agile`
+  },
+  {
+    name: "Priya Nair — Data Analyst",
+    text: `Priya Nair
+Data Analyst
+
+SUMMARY
+Data analyst with 3 years turning messy operational data into reporting and forecasts.
+
+EXPERIENCE
+Data Analyst — Retail Analytics Team (2021–present)
+- Built ETL pipelines in Python and Airflow to consolidate sales data from 5 regional systems
+- Wrote complex SQL queries against PostgreSQL and Redshift for weekly leadership reporting
+- Used Pandas and NumPy for demand forecasting models
+- Presented findings to non-technical stakeholders and built self-serve dashboards
+- Maintained data quality checks and documentation for the team's data warehouse
+
+Junior Analyst — Logistics Co (2020–2021)
+- Supported ad-hoc SQL reporting for the operations team
+- Automated recurring reports with Python scripts
+
+EDUCATION
+B.A. Economics, Statistics minor
+
+SKILLS
+Python, SQL, PostgreSQL, Pandas, NumPy, Airflow, ETL, Communication, Problem Solving`
+  },
+  {
+    name: "Marcus Webb — Frontend Engineer",
+    text: `Marcus Webb
+Frontend Engineer
+
+SUMMARY
+Frontend engineer with 5 years specializing in design systems and performance.
+
+EXPERIENCE
+Senior Frontend Engineer — SaaS Product Co (2021–present)
+- Led migration of a legacy app to React and TypeScript, improving load time by 40%
+- Built and maintained a component library used across 6 product teams
+- Mentored 3 junior engineers and ran weekly code reviews
+- Worked closely with design in Figma to implement pixel-accurate UI
+- Used GraphQL to consume backend APIs efficiently
+
+Frontend Engineer — Media Startup (2019–2021)
+- Built Vue.js interfaces for a content publishing platform
+- Collaborated with backend team on REST API contracts
+- Practiced Agile development with two-week sprints
+
+EDUCATION
+B.S. Computer Science
+
+SKILLS
+JavaScript, TypeScript, React, Vue, GraphQL, REST API, Figma, Git, Leadership, Agile`
+  }
+];
+
+const SAMPLE_ROLES = [
+  {
+    name: "Backend Engineer — Platform Team",
+    text: `Backend Engineer — Platform Team
+
+We're looking for a Backend Engineer to help scale our core platform.
+
+Requirements:
+- Strong experience with Python and building REST APIs
+- Hands-on experience with Kubernetes and container orchestration
+- Experience with AWS and infrastructure as code (Terraform)
+- Familiarity with PostgreSQL and relational data modeling
+- Experience setting up CI/CD pipelines
+- Comfortable working with GraphQL for internal tooling
+- Strong system design fundamentals
+- Excellent leadership and communication skills, able to mentor junior engineers
+- Git-based workflow experience`
+  },
+  {
+    name: "Data Platform Engineer — Analytics Team",
+    text: `Data Platform Engineer — Analytics Team
+
+We need a Data Platform Engineer to build and scale our internal analytics infrastructure.
+
+Requirements:
+- Strong SQL skills and experience with PostgreSQL or similar
+- Experience building ETL pipelines, ideally with Airflow or Spark
+- Working knowledge of Python for data processing (Pandas/NumPy a plus)
+- Experience with Kafka or similar streaming systems is a plus
+- Exposure to AWS or GCP data infrastructure
+- Familiarity with machine learning workflows and MLOps is a bonus
+- Strong problem solving and cross-team communication skills
+- Comfortable presenting findings to non-technical stakeholders`
+  },
+  {
+    name: "Frontend Lead — Product Team",
+    text: `Frontend Lead — Product Team
+
+We're hiring a Frontend Lead to own our design system and mentor the frontend team.
+
+Requirements:
+- Deep expertise in React and TypeScript
+- Experience with GraphQL for consuming backend services
+- Strong collaboration with design tools such as Figma
+- Proven leadership experience mentoring engineers and running code reviews
+- Familiarity with Node.js for lightweight tooling/build scripts
+- Experience with CI/CD for frontend deployments
+- Strong communication skills, comfortable working cross-functionally
+- Agile/Scrum team experience`
+  }
+];
+
+const profileSelect = document.getElementById('load-sample-resume');
+SAMPLE_PROFILES.forEach((p, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = p.name;
+  profileSelect.appendChild(opt);
+});
+const roleSelect = document.getElementById('load-sample-jd');
+SAMPLE_ROLES.forEach((r, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = r.name;
+  roleSelect.appendChild(opt);
+});
+
+let pdfLayoutSections = null;
+let profileMeta = null;
+let roleMeta = null;
+
+document.getElementById('load-sample-resume').onchange = (e) => {
+  if (e.target.value === '') { profileMeta = null; return; }
+  const p = SAMPLE_PROFILES[e.target.value];
+  document.getElementById('resume-text').value = p.text;
+  profileMeta = {name: p.name};
+  pdfLayoutSections = null;
+};
+document.getElementById('load-sample-jd').onchange = (e) => {
+  if (e.target.value === '') { roleMeta = null; return; }
+  const r = SAMPLE_ROLES[e.target.value];
+  document.getElementById('jd-text').value = r.text;
+  roleMeta = {name: r.name};
+};
+document.getElementById('resume-text').addEventListener('input', () => { profileMeta = null; });
+document.getElementById('jd-text').addEventListener('input', () => { roleMeta = null; });
+document.getElementById('resume-file').addEventListener('change', () => { profileMeta = null; });
+
+function guessTitleFromText(text, fallback){
+  const firstLine = text.split('\n').map(l=>l.trim()).find(l=>l.length>0);
+  if (firstLine && firstLine.length < 48) return firstLine;
+  return fallback;
+}
+
+document.getElementById('resume-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('status-text').textContent = 'Parsing PDF layout...';
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    let fullText = '';
+    const items = [];
+    for (let p = 1; p <= pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      for (const it of content.items){
+        const fontSize = Math.abs(it.transform[0]) || Math.abs(it.transform[3]) || 0;
+        items.push({text: it.str, fontSize});
+        fullText += it.str + ' ';
+      }
+      fullText += '\n';
+    }
+    document.getElementById('resume-text').value = fullText.trim();
+    // layout heuristic: header = larger-than-median font size, short line
+    const sizes = items.map(i=>i.fontSize).filter(s=>s>0);
+    const median = sizes.sort((a,b)=>a-b)[Math.floor(sizes.length/2)] || 10;
+    const headers = [];
+    for (const it of items){
+      const t = it.text.trim();
+      if (t.length > 1 && t.length < 32 && it.fontSize > median * 1.18 && !headers.includes(t)){
+        headers.push(t);
+      }
+    }
+    pdfLayoutSections = headers.slice(0, 10);
+    document.getElementById('status-text').textContent = 'PDF parsed — ' + pdf.numPages + ' page(s), ' + items.length + ' text elements.';
+  } catch(err){
+    document.getElementById('status-text').textContent = 'Could not parse PDF — paste text instead.';
+  }
+});
+
+function detectSectionsFromText(text){
+  const commonHeaders = ['summary','objective','experience','work experience','education','skills','projects','certifications','achievements','profile','employment history'];
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const found = [];
+  for (const line of lines){
+    const clean = line.toLowerCase().replace(/[^a-z ]/g,'').trim();
+    if (clean.length < 30 && commonHeaders.some(h => clean === h || clean.startsWith(h))){
+      const label = line.length < 30 ? line : line.slice(0,30);
+      if (!found.includes(label)) found.push(label);
+    }
+  }
+  return found;
+}
+
+let matchedSkills = [], gapSkills = [], extraSkills = [], jdSkillCount = 0;
+
+function scoreFor(matchedCount, total){
+  if (total === 0) return 0;
+  return Math.round((matchedCount/total)*100);
+}
+
+function setGauge(pct){
+  const circumference = 427;
+  const offset = circumference - (circumference * Math.min(pct,100) / 100);
+  const arc = document.getElementById('gauge-arc');
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = pct >= 70 ? '#0E9E86' : pct >= 40 ? '#B87610' : '#D9483B';
+  document.getElementById('gauge-num').textContent = pct + '%';
+}
+
+function narrativeFor(pct, gapCount){
+  if (pct >= 80) return 'Strong resource fit — ready for direct assignment to this role or project with minimal ramp-up.';
+  if (pct >= 50) return 'Moderate fit. Closing ' + gapCount + ' skill gap(s) — via training or a short ramp-up — would make this a strong staffing match.';
+  return 'Low fit as-is. Consider this profile only with significant upskilling investment, or prioritize external hiring for this requirement.';
+}
+
+function renderChips(containerId, list, cls){
+  const el = document.getElementById(containerId);
+  if (list.length === 0){ el.innerHTML = '<span class="empty-note">None detected</span>'; return; }
+  el.innerHTML = list.map(s => `<span class="chip ${cls}">${s}</span>`).join('');
+}
+
+function runSimulatorRecalc(){
+  const checked = Array.from(document.querySelectorAll('.sim-check input:checked')).map(cb=>cb.dataset.skill);
+  const newMatched = matchedSkills.length + checked.length;
+  const pct = scoreFor(newMatched, jdSkillCount);
+  const basePct = scoreFor(matchedSkills.length, jdSkillCount);
+  document.getElementById('sim-val').textContent = pct + '%';
+  const delta = pct - basePct;
+  document.getElementById('sim-delta').textContent = delta === 0 ? 'baseline' : (delta > 0 ? '+' + delta + '% vs baseline' : delta + '%');
+  document.getElementById('sim-delta').style.color = delta > 0 ? '#0E9E86' : '#69707B';
+}
+
+function buildFallbackTips(matched, gap){
+  const tips = [];
+  if (gap.length > 0){
+    tips.push(`Add explicit, literal mentions of ${gap.slice(0,3).join(', ')} — ATS keyword matchers look for exact terms, not synonyms or implied experience.`);
+  }
+  if (gap.includes('System Design') || gap.includes('Leadership')){
+    tips.push(`Reframe a past project as a system-design or leadership example (e.g. "designed X system" or "mentored N engineers") to surface those keywords in context.`);
+  }
+  if (matched.length > 0){
+    tips.push(`Keep the ${matched.slice(0,2).join(' and ')} keywords near the top third of the resume — many ATS parsers weight earlier content more heavily.`);
+  }
+  tips.push(`Mirror the job description's exact phrasing for tools and skills where honestly applicable (e.g. "CI/CD pipelines" rather than "automated deployment").`);
+  if (gap.length === 0){
+    tips.push('No hard skill gaps detected — focus optimization on quantifying impact (metrics, scale, outcomes) rather than adding keywords.');
+  }
+  return tips.slice(0,4);
+}
+
+function renderAITips(tips, source){
+  const el = document.getElementById('ai-panel');
+  el.innerHTML = tips.map((t,i)=>`<div class="ai-tip"><div class="idx">0${i+1}</div><div>${t}</div></div>`).join('')
+    + `<div class="ai-src">Source: ${source}</div>`;
+}
+
+async function getAITips(matched, gap, jd){
+  const fallback = buildFallbackTips(matched, gap);
+  renderAITips(fallback, 'Rule-based recommendation engine');
+  try {
+    const prompt = `You are an ATS resume optimization assistant. A resume has these matched skills: ${matched.join(', ') || 'none'}. It is missing these required skills: ${gap.join(', ') || 'none'}. The job requires: ${jd.join(', ')}. Give exactly 4 short, specific, actionable resume optimization tips (each under 25 words) as a JSON array of strings, and nothing else, no markdown.`;
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 500,
+        messages: [{role: "user", content: prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = data.content.map(c => c.text || '').join('').trim();
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    if (Array.isArray(parsed) && parsed.length > 0){
+      renderAITips(parsed.slice(0,4), 'Claude-generated (live agentic layer)');
+    }
+  } catch(err){
+    // fallback tips already rendered
+  }
+}
+
+document.getElementById('reset-btn').onclick = () => {
+  document.getElementById('resume-text').value = '';
+  document.getElementById('jd-text').value = '';
+  document.getElementById('resume-file').value = '';
+  document.getElementById('load-sample-resume').value = '';
+  document.getElementById('load-sample-jd').value = '';
+  pdfLayoutSections = null;
+  document.getElementById('status-text').textContent = 'Add a profile and a requirement above, or pick a sample from each dropdown, then run the scan.';
+};
+
+document.getElementById('back-btn').onclick = () => {
+  document.getElementById('screen-results').classList.remove('active');
+  document.getElementById('screen-input').classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+document.getElementById('run-scan').onclick = async () => {
+  const resumeText = document.getElementById('resume-text').value.trim();
+  const jdText = document.getElementById('jd-text').value.trim();
+  if (!resumeText || !jdText){
+    document.getElementById('status-text').textContent = 'Add both a resume and a job description first (or click "Load sample").';
+    return;
+  }
+  const btn = document.getElementById('run-scan');
+  btn.disabled = true;
+  document.getElementById('resume-panel').classList.add('scanning');
+  document.getElementById('jd-panel').classList.add('scanning');
+  document.getElementById('status-text').textContent = 'Scanning...';
+
+  await new Promise(r => setTimeout(r, 650));
+
+  const resumeSkills = extractSkills(resumeText);
+  const jdSkills = extractSkills(jdText);
+  matchedSkills = jdSkills.filter(s => resumeSkills.includes(s));
+  gapSkills = jdSkills.filter(s => !resumeSkills.includes(s));
+  extraSkills = resumeSkills.filter(s => !jdSkills.includes(s));
+  jdSkillCount = jdSkills.length;
+
+  const pct = scoreFor(matchedSkills.length, jdSkillCount);
+
+  document.getElementById('resume-panel').classList.remove('scanning');
+  document.getElementById('jd-panel').classList.remove('scanning');
+  document.getElementById('status-text').textContent = 'Scan complete.';
+  btn.disabled = false;
+
+  const profileName = profileMeta ? profileMeta.name : guessTitleFromText(resumeText, 'Custom Profile');
+  const roleName = roleMeta ? roleMeta.name : guessTitleFromText(jdText, 'Custom Requirement');
+  document.getElementById('id-name').textContent = profileName;
+  document.getElementById('id-role').textContent = roleName;
+  const initials = profileName.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase() || '?';
+  document.getElementById('id-avatar').textContent = initials;
+  const tagEl = document.getElementById('id-tag');
+  if (profileMeta){
+    tagEl.textContent = 'Sample profile';
+    tagEl.classList.remove('custom');
+  } else {
+    tagEl.textContent = 'Custom input';
+    tagEl.classList.add('custom');
+  }
+
+  setGauge(pct);
+  document.getElementById('count-matched').textContent = matchedSkills.length;
+  document.getElementById('count-gap').textContent = gapSkills.length;
+  document.getElementById('count-extra').textContent = extraSkills.length;
+  document.getElementById('score-narrative').textContent = narrativeFor(pct, gapSkills.length);
+
+  renderChips('chips-matched', matchedSkills, 'matched');
+  renderChips('chips-gap', gapSkills, 'gap');
+  renderChips('chips-extra', extraSkills, 'extra');
+
+  const simEl = document.getElementById('sim-checks');
+  if (gapSkills.length === 0){
+    simEl.innerHTML = '<span class="empty-note">No gaps to simulate — full keyword coverage.</span>';
+  } else {
+    simEl.innerHTML = gapSkills.map(s => `<label class="sim-check"><input type="checkbox" data-skill="${s}"> ${s}</label>`).join('');
+    document.querySelectorAll('.sim-check input').forEach(cb => cb.addEventListener('change', runSimulatorRecalc));
+  }
+  runSimulatorRecalc();
+
+  const sections = pdfLayoutSections && pdfLayoutSections.length ? pdfLayoutSections : detectSectionsFromText(resumeText);
+  const secEl = document.getElementById('detected-sections');
+  secEl.innerHTML = sections.length
+    ? sections.map(s => `<span class="sec-chip"><b>§</b>${s}</span>`).join('')
+    : '<span class="empty-note">No clear section headers detected in plain text — upload a PDF for font-size-based layout detection.</span>';
+
+  document.getElementById('screen-input').classList.remove('active');
+  document.getElementById('screen-results').classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+
+  getAITips(matchedSkills, gapSkills, jdSkills);
+};
+</script>
+</body>
+</html>

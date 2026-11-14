@@ -1,0 +1,14 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+PyMuPDF==1.24.10
+python-docx==1.1.2
+pydantic==2.9.2
+
+# Optional (OCR fallback for scanned/image-only PDF resumes).
+# Requires the Tesseract binary installed on your OS as well:
+#   Windows: https://github.com/UB-Mannheim/tesseract/wiki
+#   macOS:   brew install tesseract
+#   Linux:   sudo apt install tesseract-ocr
+pytesseract==0.3.13
+Pillow==10.4.0
